@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}변경이력 · {{ chunk.chunk_code }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <a class="back-link" href="{{ url_for('documents.detail', document_id=chunk.document_id) }}">← 문서 상세</a>
+    <h1>{{ chunk.chunk_code }} {{ chunk.title }}</h1>
+    <p>{{ chunk.team_name }} · 버전 및 개인별 수정이력</p>
+  </div>
+  <span class="status-pill status-{{ chunk.status }}">{{ chunk_status_labels[chunk.status] }}</span>
+</div>
+
+<div class="card shadow-sm overflow-hidden">
+  <div class="table-responsive">
+    <table class="table workspace-table align-middle mb-0">
+      <thead><tr><th>버전</th><th>수정자</th><th>수정일시</th><th>변경 사유</th><th>신구대조</th><th class="text-end">파일</th></tr></thead>
+      <tbody>
+      {% for version in versions %}
+        <tr>
+          <td><strong>v{{ version.version_no }}</strong></td>
+          <td>{{ version.uploaded_by_name }}<small class="d-block text-secondary">{{ version.uploaded_by_team_name }}</small></td>
+          <td>{{ version.created_at|datetime_ko }}</td>
+          <td>{{ version.change_reason }}</td>
+          <td>
+            {% if version.diff_status == 'succeeded' %}
+            <a href="{{ url_for('chunks.diff', version_id=version.id) }}">{{ version.diff_summary }}</a>
+            {% elif version.diff_status == 'failed' %}
+            <a class="text-danger" href="{{ url_for('chunks.diff', version_id=version.id) }}">문서 비교 처리 실패</a>
+            {% else %}
+            <span class="text-secondary">{{ version.diff_summary or '처리 대기' }}</span>
+            {% endif %}
+          </td>
+          <td><div class="action-row justify-content-end">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chunks.preview', version_id=version.id) }}">내용 보기</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chunks.download', version_id=version.id) }}">다운로드</a>
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('chunks.diff', version_id=version.id) }}">신구대조</a>
+          </div></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="text-center text-secondary py-5">아직 제출된 버전이 없습니다.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

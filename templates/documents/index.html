@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}전체 자료{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <span class="eyebrow">SHARED DOCUMENTS</span>
+    <h1>전체 자료</h1>
+    <p>모든 팀의 자료를 열람할 수 있으며, 소속 팀 조각만 편집할 수 있습니다.</p>
+  </div>
+  {% if current_user.is_final_manager %}
+  <a class="btn btn-outline-primary" href="{{ url_for('admin.manage') }}">자료 관리</a>
+  {% endif %}
+</div>
+
+{% if documents %}
+<div class="row g-4">
+  {% for document in documents %}
+  <div class="col-lg-6">
+    <article class="card document-card h-100 shadow-sm">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <span class="status-pill status-{{ document.status }}">{{ document_status_labels[document.status] }}</span>
+          <span class="text-secondary small">개정 {{ document.revision_no }}차</span>
+        </div>
+        <h2 class="h4 mt-3">{{ document.title }}</h2>
+        <p class="text-secondary">{{ document.description or '설명이 없습니다.' }}</p>
+        <div class="progress-meta">
+          <span>승인 {{ document.approved_count }} / {{ document.chunk_count }}</span>
+          <strong>{{ document.progress }}%</strong>
+        </div>
+        <div class="progress" role="progressbar" aria-valuenow="{{ document.progress }}" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-bar" style="width: {{ document.progress }}%"></div>
+        </div>
+      </div>
+      <div class="card-footer bg-transparent border-0 px-4 pb-4">
+        <a class="btn btn-primary" href="{{ url_for('documents.detail', document_id=document.id) }}">자료 열기</a>
+      </div>
+    </article>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state card"><div class="card-body">등록된 자료가 없습니다.</div></div>
+{% endif %}
+{% endblock %}
+

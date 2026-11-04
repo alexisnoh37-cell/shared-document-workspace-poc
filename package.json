@@ -1,0 +1,14 @@
+{
+  "name": "clean-energy-workspace-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:rhwp": "node scripts/copy_rhwp_editor.mjs",
+    "generate:samples": "node scripts/generate_sample_files.mjs"
+  },
+  "dependencies": {
+    "@rhwp/editor": "0.8.4",
+    "kordoc": "4.24.43"
+  }
+}

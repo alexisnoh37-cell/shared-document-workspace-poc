@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}워크스페이스 관리{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <span class="eyebrow">WORKSPACE ADMIN</span>
+    <h1>사용자·자료·조각 관리</h1>
+    <p>총괄 관리 기능은 콘텐츠 편집권한과 분리됩니다.</p>
+  </div>
+</div>
+
+<div class="row g-4 mb-5">
+  <div class="col-lg-5">
+    <section class="card shadow-sm h-100">
+      <div class="card-body p-4">
+        <h2 class="h5">새 자료 만들기</h2>
+        <form method="post" action="{{ url_for('admin.create_document') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3"><label class="form-label" for="title">자료명</label><input class="form-control" id="title" name="title" required></div>
+          <div class="mb-3"><label class="form-label" for="description">설명</label><textarea class="form-control" id="description" name="description" rows="3"></textarea></div>
+          <button class="btn btn-primary" type="submit">자료 생성</button>
+        </form>
+      </div>
+    </section>
+  </div>
+  <div class="col-lg-7">
+    <section class="card shadow-sm h-100 overflow-hidden">
+      <div class="card-header bg-white p-4"><h2 class="h5 mb-0">사용자 {{ profiles|length }}명</h2></div>
+      <div class="table-responsive admin-user-table">
+        <table class="table align-middle mb-0">
+          <thead><tr><th>사용자</th><th>팀</th><th>역할</th><th>상태</th><th></th></tr></thead>
+          <tbody>
+          {% for profile in profiles %}
+            <tr>
+              <td><strong>{{ profile.name }}</strong><small class="d-block text-secondary">{{ profile.email }}</small></td>
+              <td>{{ profile.team_name }}</td>
+              <td>{{ '검토자' if profile.role == 'reviewer' else '팀원' }}{% if profile.is_final_manager %}<span class="badge text-bg-dark ms-1">총괄</span>{% endif %}</td>
+              <td>{{ '활성' if profile.active else '비활성' }}</td>
+              <td class="text-end">
+                <form method="post" action="{{ url_for('admin.set_profile_active', profile_id=profile.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="active" value="{{ 'false' if profile.active else 'true' }}">
+                  <button class="btn btn-sm {{ 'btn-outline-danger' if profile.active else 'btn-outline-success' }}" type="submit">{{ '비활성화' if profile.active else '활성화' }}</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<h2 class="h4 mb-3">자료별 조각 구성</h2>
+<div class="accordion" id="documentAccordion">
+{% for document in documents %}
+  {% set document_loop_index = loop.index %}
+  <div class="accordion-item">
+    <h3 class="accordion-header">
+      <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#doc-{{ loop.index }}">
+        {{ document.title }} <span class="badge text-bg-light ms-2">{{ document.chunk_count }}개</span>
+      </button>
+    </h3>
+    <div id="doc-{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" data-bs-parent="#documentAccordion">
+      <div class="accordion-body">
+        {% if can_delete_document(current_user) %}
+        <div class="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-end mb-4">
+          {% if document.status == 'confirmed' %}
+          <div>
+            <span class="form-label d-block">자료명</span>
+            <span class="fw-semibold">{{ document.title }}</span>
+          </div>
+          <span class="small text-secondary">최종확정된 자료는 이름을 바꾸거나 삭제할 수 없습니다.</span>
+          {% else %}
+          <form method="post" action="{{ url_for('admin.update_document_title', document_id=document.id) }}" class="flex-grow-1">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="form-label" for="document-title-{{ document.id }}">자료명</label>
+            <div class="input-group">
+              <input class="form-control" id="document-title-{{ document.id }}" name="title" value="{{ document.title }}" required>
+              <button class="btn btn-outline-primary" type="submit">자료명 저장</button>
+            </div>
+          </form>
+          <button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#delete-document-{{ document_loop_index }}">
+            자료 영구 삭제
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="row g-4">
+          <div class="col-lg-7">
+            <ul class="list-group list-group-flush">
+            {% for chunk in chunks_by_document[document.id] %}
+              <li class="list-group-item px-0">
+                <div class="d-flex justify-content-between gap-3">
+                  <strong>{{ chunk.chunk_code }}</strong>
+                  <span class="text-secondary">{{ chunk.team_name }}</span>
+                </div>
+                {% if can_delete_document(current_user) and document.status != 'confirmed' %}
+                <form method="post" action="{{ url_for('admin.update_chunk_title', chunk_id=chunk.id) }}" class="d-flex flex-column flex-md-row gap-2 mt-2">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <label class="visually-hidden" for="chunk-title-{{ chunk.id }}">조각명</label>
+                  <input class="form-control" id="chunk-title-{{ chunk.id }}" name="title" value="{{ chunk.title }}" required>
+                  <button class="btn btn-sm btn-outline-primary flex-shrink-0" type="submit">이름 저장</button>
+                  <button class="btn btn-sm btn-outline-danger flex-shrink-0" type="button"
+                          data-bs-toggle="modal" data-bs-target="#delete-chunk-{{ chunk.id }}"
+                          {% if chunk.locked_by %}disabled title="잠금을 먼저 해제하세요"{% endif %}>
+                    조각 삭제
+                  </button>
+                </form>
+                {% if chunk.locked_by %}<small class="text-danger">현재 {{ chunk.locked_by_name }}님이 편집 중이므로 삭제할 수 없습니다.</small>{% endif %}
+
+                <div class="modal fade" id="delete-chunk-{{ chunk.id }}" tabindex="-1" aria-labelledby="delete-chunk-title-{{ chunk.id }}" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                      <form method="post" action="{{ url_for('admin.delete_chunk', chunk_id=chunk.id) }}"
+                            data-delete-confirmation="{{ delete_chunk_confirmation_text }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="modal-header">
+                          <h4 class="modal-title h5" id="delete-chunk-title-{{ chunk.id }}">조각 영구 삭제</h4>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+                        </div>
+                        <div class="modal-body text-start">
+                          <p class="fw-semibold text-danger">삭제 시 조각은 복원할 수 없습니다. 삭제하시겠습니까?</p>
+                          <p><strong>{{ chunk.chunk_code }} {{ chunk.title }}</strong> 조각과 모든 버전 파일이 삭제됩니다.</p>
+                          <label class="form-label" for="delete-chunk-confirmation-{{ chunk.id }}">
+                            계속하려면 <code>{{ delete_chunk_confirmation_text }}</code>를 입력하세요.
+                          </label>
+                          <input class="form-control" id="delete-chunk-confirmation-{{ chunk.id }}"
+                                 name="confirmation_text" type="text" autocomplete="off"
+                                 data-delete-confirmation-input required>
+                          <div class="invalid-feedback">확인 문구를 정확히 입력하세요.</div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+                          <button type="submit" class="btn btn-danger" data-delete-submit disabled>조각 영구 삭제</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                {% else %}
+                <span>{{ chunk.title }}</span>
+                {% endif %}
+              </li>
+            {% else %}
+              <li class="list-group-item px-0 text-secondary">아직 문서 조각이 없습니다.</li>
+            {% endfor %}
+            </ul>
+          </div>
+          <div class="col-lg-5">
+            {% if document.status != 'confirmed' %}
+            <form method="post" action="{{ url_for('admin.create_chunk', document_id=document.id) }}" class="subtle-panel">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <h4 class="h6">조각 추가</h4>
+              <div class="row g-2">
+                <div class="col-4"><input class="form-control" name="chunk_code" placeholder="VI-1" required></div>
+                <div class="col-8"><input class="form-control" name="title" placeholder="조각명" required></div>
+                <div class="col-12"><select class="form-select" name="team_id" required><option value="">담당팀 선택</option>{% for team in teams %}<option value="{{ team.id }}">{{ team.name }}</option>{% endfor %}</select></div>
+              </div>
+              <button class="btn btn-sm btn-primary mt-3" type="submit">추가</button>
+            </form>
+            {% else %}
+            <div class="alert alert-secondary">최종확정된 자료에는 조각을 추가할 수 없습니다.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if can_delete_document(current_user) and document.status != 'confirmed' %}
+        <div class="modal fade" id="delete-document-{{ loop.index }}" tabindex="-1" aria-labelledby="delete-document-title-{{ loop.index }}" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <form method="post" action="{{ url_for('admin.delete_document', document_id=document.id) }}"
+                    data-delete-confirmation="{{ delete_confirmation_text }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                  <h4 class="modal-title h5" id="delete-document-title-{{ loop.index }}">자료 영구 삭제</h4>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+                </div>
+                <div class="modal-body">
+                  <p class="fw-semibold text-danger">삭제 시 자료는 복원할 수 없습니다, 삭제하시겠습니까?</p>
+                  <p class="mb-2"><strong>{{ document.title }}</strong> 자료와 모든 조각·버전 파일이 삭제됩니다.</p>
+                  <label class="form-label" for="delete-confirmation-{{ loop.index }}">
+                    계속하려면 <code>{{ delete_confirmation_text }}</code>를 입력하세요.
+                  </label>
+                  <input class="form-control" id="delete-confirmation-{{ loop.index }}" name="confirmation_text"
+                         type="text" autocomplete="off" data-delete-confirmation-input required>
+                  <div class="invalid-feedback">확인 문구를 정확히 입력하세요.</div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+                  <button type="submit" class="btn btn-danger" data-delete-submit disabled>영구 삭제</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

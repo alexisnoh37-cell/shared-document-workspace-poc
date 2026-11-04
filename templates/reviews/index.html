@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}팀 검토{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <span class="eyebrow">TEAM REVIEW</span>
+    <h1>{{ current_user.team_name }} 검토함</h1>
+    <p>소속 팀이 제출한 최신 버전만 승인하거나 반려할 수 있습니다.</p>
+  </div>
+  <span class="count-badge">{{ chunks|length }}건 대기</span>
+</div>
+
+<div class="row g-4">
+{% for chunk in chunks %}
+  <div class="col-xl-6">
+    <article class="card review-card h-100 shadow-sm">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between">
+          <span class="status-pill status-submitted">제출완료</span>
+          <strong>v{{ chunk.current_version }}</strong>
+        </div>
+        <h2 class="h4 mt-3">{{ chunk.chunk_code }} {{ chunk.title }}</h2>
+        <p class="text-secondary">{{ chunk.document_title }}</p>
+        <div class="review-meta">
+          <span>최근 수정자 <strong>{{ chunk.latest_uploaded_by_name }}</strong></span>
+          <span>{{ chunk.latest_updated_at|datetime_ko }}</span>
+        </div>
+        <div class="action-row my-3">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chunks.preview', version_id=chunk.latest_version_id) }}">제출본 보기</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chunks.download', version_id=chunk.latest_version_id) }}">다운로드</a>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('chunks.history', chunk_id=chunk.id) }}">변경이력·신구대조</a>
+        </div>
+        <form method="post" action="{{ url_for('reviews.decide', chunk_id=chunk.id) }}" class="review-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="form-label" for="comment-{{ chunk.id }}">검토 의견 / 반려 사유</label>
+          <textarea class="form-control mb-3" id="comment-{{ chunk.id }}" name="comment" rows="3" maxlength="1000"
+                    placeholder="반려 시 사유를 반드시 입력하세요."></textarea>
+          <div class="d-flex gap-2">
+            <button class="btn btn-success" type="submit" name="action" value="approve" data-confirm="현재 제출 버전을 승인할까요?">승인</button>
+            <button class="btn btn-outline-danger" type="submit" name="action" value="reject">반려</button>
+          </div>
+        </form>
+      </div>
+    </article>
+  </div>
+{% else %}
+  <div class="col-12"><div class="empty-state card"><div class="card-body text-center p-5">현재 검토 대기 중인 제출본이 없습니다.</div></div></div>
+{% endfor %}
+</div>
+{% endblock %}

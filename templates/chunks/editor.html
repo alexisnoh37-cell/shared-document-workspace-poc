@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}웹 편집 · {{ chunk.chunk_code }}{% endblock %}
+{% block content %}
+<div class="page-heading editor-page-heading">
+  <div>
+    <a class="back-link" href="{{ url_for('chunks.submit', chunk_id=chunk.id) }}">← 편집 방법 선택</a>
+    <h1>{{ chunk.chunk_code }} {{ chunk.title }}</h1>
+    <p>{{ chunk.team_name }} · 체크아웃 기준 v{{ version.version_no }} · {{ version.original_filename }}</p>
+  </div>
+  <span class="status-pill status-editing">{{ current_user.name }} 편집 중</span>
+</div>
+
+<div id="rhwp-workflow-editor"
+     data-studio-url="{{ studio_url }}"
+     data-source-url="{{ url_for('chunks.editor_source', chunk_id=chunk.id) }}"
+     data-save-url="{{ url_for('chunks.editor_save', chunk_id=chunk.id) }}"
+     data-fallback-url="{{ url_for('chunks.submit', chunk_id=chunk.id) }}"
+     data-filename="{{ version.original_filename }}">
+  <div class="editor-notice mb-3">
+    <div>
+      <strong>HWPX 웹 편집</strong>
+      <span>저장 및 제출을 눌렀을 때만 새 불변 버전이 생성되고 현재 잠금이 해제됩니다.</span>
+    </div>
+    <small>편집 엔진: {{ studio_url }}</small>
+  </div>
+
+  <div id="rhwp-editor-error" class="alert alert-warning d-none" role="alert">
+    <strong>웹 편집기를 불러오지 못했습니다.</strong>
+    <span id="rhwp-editor-error-message" class="d-block mt-1"></span>
+    <a class="alert-link" href="{{ url_for('chunks.submit', chunk_id=chunk.id) }}">파일을 내려받아 한글에서 수정하기</a>
+  </div>
+
+  <div id="rhwp-editor-status" class="editor-loading" role="status">
+    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+    <span>잠긴 HWPX 버전을 불러오는 중입니다…</span>
+  </div>
+  <div id="rhwp-editor-container" class="rhwp-editor-container"></div>
+
+  <form id="rhwp-save-form" class="card card-body p-4 mt-3 shadow-sm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label" for="change_reason">변경 사유</label>
+    <textarea class="form-control" id="change_reason" name="change_reason" rows="3" maxlength="1000" required
+              placeholder="예: 2027년 보급 목표 및 추진일정 최신화"></textarea>
+    <div class="editor-submit-row mt-3">
+      <p class="mb-0 text-secondary small">취소해도 편집 잠금은 유지됩니다. 잠금 해제는 기존 검토자 절차를 이용하세요.</p>
+      <div class="action-row">
+        <a class="btn btn-outline-secondary" href="{{ url_for('chunks.submit', chunk_id=chunk.id) }}">취소</a>
+        <button class="btn btn-primary" id="rhwp-save-button" type="submit" disabled>저장 및 제출</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/rhwp_editor.js') }}"></script>
+{% if config.COLLAB_EDITOR_ENABLED %}
+<div data-heartbeat-url="{{ url_for('collab.heartbeat', chunk_id=chunk.id) }}"
+     data-heartbeat-seconds="60" hidden></div>
+<script src="{{ url_for('static', filename='js/collab_heartbeat.js') }}"></script>
+{% endif %}
+{% endblock %}

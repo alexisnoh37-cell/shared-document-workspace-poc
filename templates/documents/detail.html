@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{{ document.title }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <a class="back-link" href="{{ url_for('documents.index') }}">← 전체 자료</a>
+    <h1>{{ document.title }}</h1>
+    <p>{{ document.description or '' }}</p>
+  </div>
+  <span class="status-pill status-{{ document.status }}">{{ document_status_labels[document.status] }}</span>
+</div>
+
+<form class="filter-bar card card-body mb-4" method="get">
+  <div>
+    <label class="form-label" for="team">담당팀</label>
+    <select class="form-select" id="team" name="team">
+      <option value="">전체 팀</option>
+      {% for team in teams %}
+      <option value="{{ team.id }}" {% if selected_team == team.id %}selected{% endif %}>{{ team.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="form-label" for="status">상태</label>
+    <select class="form-select" id="status" name="status">
+      <option value="">전체 상태</option>
+      {% for value, label in chunk_status_labels.items() %}
+      <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn btn-outline-primary align-self-end" type="submit">필터 적용</button>
+</form>
+
+<div class="card shadow-sm overflow-hidden">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0 workspace-table">
+      <thead>
+        <tr>
+          <th>조각</th>
+          <th>담당팀</th>
+          <th>상태</th>
+          <th>최근 수정</th>
+          <th>버전</th>
+          <th class="text-end">작업</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for chunk in chunks %}
+        <tr{% if config.COLLAB_EDITOR_ENABLED %} data-chunk-id="{{ chunk.id }}"{% if chunk.locked_by %} class="chunk-editing"{% endif %}{% endif %}>
+          <td>
+            <strong>{{ chunk.chunk_code }}</strong>
+            <span class="d-block">{{ chunk.title }}</span>
+            {% if config.COLLAB_EDITOR_ENABLED %}
+            <small class="lock-note" data-lock-note{% if not chunk.locked_by %} hidden{% endif %}>{% if chunk.locked_by %}🔒 {% if chunk.locked_by == current_user.id %}내가 수정 중{% else %}{{ chunk.locked_by_name }}님 수정 중{% endif %}{% endif %}</small>
+            {% elif chunk.locked_by %}
+            <small class="lock-note">🔒 {{ chunk.locked_by_name }}님 편집 중</small>
+            {% endif %}
+          </td>
+          <td>{{ chunk.team_name }}</td>
+          <td><span class="status-pill status-{{ chunk.status }}">{{ chunk_status_labels[chunk.status] }}</span></td>
+          <td>
+            {{ chunk.latest_uploaded_by_name or '-' }}
+            <small class="d-block text-secondary">{{ chunk.latest_updated_at|datetime_ko }}</small>
+          </td>
+          <td>v{{ chunk.current_version }}</td>
+          <td>
+            <div class="action-row justify-content-end">
+              {% if chunk.latest_version_id %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chunks.preview', version_id=chunk.latest_version_id) }}">내용 보기</a>
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chunks.download', version_id=chunk.latest_version_id) }}">다운로드</a>
+              {% endif %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chunks.history', chunk_id=chunk.id) }}">이력</a>
+              {% if can_edit_chunk(current_user, chunk) and document.status != 'confirmed' %}
+                {% if chunk.locked_by == current_user.id %}
+                <a class="btn btn-sm btn-primary" href="{{ url_for('chunks.submit', chunk_id=chunk.id) }}">제출 계속</a>
+                {% elif config.COLLAB_EDITOR_ENABLED %}
+                <form method="post" action="{{ url_for('chunks.checkout', chunk_id=chunk.id) }}" data-edit-start>
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-primary" type="submit"{% if chunk.locked_by %} data-locked-by-other="1"{% endif %}>편집 시작</button>
+                </form>
+                {% elif not chunk.locked_by %}
+                <form method="post" action="{{ url_for('chunks.checkout', chunk_id=chunk.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-primary" type="submit">편집 시작</button>
+                </form>
+                {% endif %}
+              {% endif %}
+              {% if can_force_unlock_chunk(current_user, chunk) and chunk.locked_by %}
+              <form method="post" action="{{ url_for('chunks.force_unlock', chunk_id=chunk.id) }}" data-confirm="현재 편집 잠금을 강제로 해제할까요?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-danger" type="submit">잠금 해제</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td class="text-center text-secondary py-5" colspan="6">조건에 맞는 문서 조각이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% if config.COLLAB_EDITOR_ENABLED %}
+<div id="collab-presence"
+     data-locks-url="{{ url_for('collab.document_locks', document_id=document.id) }}"
+     data-poll-seconds="{{ config.COLLAB_POLL_SECONDS }}"
+     hidden></div>
+<script src="{{ url_for('static', filename='js/collab_presence.js') }}"></script>
+{% endif %}
+{% endblock %}

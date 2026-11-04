@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}신구대조 · v{{ version.version_no }}{% endblock %}
+{% block content %}
+{% macro render_block(block) %}
+  {% if not block %}
+  <p class="diff-empty mb-0">내용 없음</p>
+  {% elif block.type == 'table' and block.table %}
+  <div class="table-responsive">
+    <table class="table table-sm diff-table mb-0">
+      <tbody>
+        {% for row in block.table.cells %}
+        <tr>
+          {% for cell in row %}
+          <td colspan="{{ cell.colSpan or 1 }}" rowspan="{{ cell.rowSpan or 1 }}"
+              class="{% if cell.isHeader %}diff-table-header{% endif %}">{{ cell.text or '' }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="diff-block-text mb-0">{{ block.text or '(텍스트 없음)' }}</p>
+  {% endif %}
+{% endmacro %}
+
+<div class="page-heading">
+  <div>
+    <a class="back-link" href="{{ url_for('chunks.history', chunk_id=chunk.id) }}">← 변경이력</a>
+    <h1>{{ chunk.chunk_code }} v{{ version.version_no }} 신구대조</h1>
+    <p>{{ version.change_reason }}</p>
+  </div>
+  <span class="diff-state diff-{{ version.diff_status }}">
+    {{ {'succeeded': '분석 완료', 'failed': '분석 실패', 'pending': '분석 대기', 'processing': '분석 중', 'not_applicable': '비교 대상 없음'}.get(version.diff_status, version.diff_status) }}
+  </span>
+</div>
+
+{% if version.diff_status == 'succeeded' and version.diff_data %}
+{% set stats = version.diff_data.stats %}
+<div class="stat-grid stat-grid-small mb-4">
+  <div class="stat-card stat-added"><span>추가</span><strong>{{ stats.added or 0 }}</strong></div>
+  <div class="stat-card stat-removed"><span>삭제</span><strong>{{ stats.removed or 0 }}</strong></div>
+  <div class="stat-card stat-modified"><span>수정</span><strong>{{ stats.modified or 0 }}</strong></div>
+  <div class="stat-card"><span>동일</span><strong>{{ stats.unchanged or 0 }}</strong></div>
+</div>
+{% set changed_diffs = version.diff_data.diffs|rejectattr('type', 'equalto', 'unchanged')|list %}
+<section class="card shadow-sm diff-detail-card">
+  <div class="card-header bg-white p-4">
+    <strong>변경 내용</strong>
+    <span class="text-secondary ms-2">변경된 블록 {{ changed_diffs|length }}건</span>
+  </div>
+  <div class="card-body p-4">
+    {% for diff in changed_diffs %}
+    <article class="diff-item diff-item-{{ diff.type }}">
+      <header class="diff-item-header">
+        <span class="diff-kind diff-kind-{{ diff.type }}">
+          {{ {'added': '추가', 'removed': '삭제', 'modified': '수정'}.get(diff.type, diff.type) }}
+        </span>
+        {% set page_number = (diff.after or diff.before or {}).get('pageNumber') %}
+        {% if page_number %}<small>{{ page_number }}페이지</small>{% endif %}
+      </header>
+
+      {% if diff.type == 'added' %}
+      <div class="diff-side diff-side-after">
+        <span class="diff-side-label">신규 내용</span>
+        {{ render_block(diff.after) }}
+      </div>
+      {% elif diff.type == 'removed' %}
+      <div class="diff-side diff-side-before">
+        <span class="diff-side-label">삭제된 내용</span>
+        {{ render_block(diff.before) }}
+      </div>
+      {% else %}
+      <div class="diff-sides">
+        <div class="diff-side diff-side-before">
+          <span class="diff-side-label">변경 전</span>
+          {{ render_block(diff.before) }}
+        </div>
+        <div class="diff-side diff-side-after">
+          <span class="diff-side-label">변경 후</span>
+          {{ render_block(diff.after) }}
+        </div>
+      </div>
+      {% endif %}
+    </article>
+    {% else %}
+    <p class="text-secondary mb-0">변경된 블록이 없습니다.</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% if stats.unchanged %}
+<details class="card shadow-sm mt-3 unchanged-details">
+  <summary>변경 없는 블록 {{ stats.unchanged }}건 보기</summary>
+  <div class="unchanged-list">
+    {% for diff in version.diff_data.diffs if diff.type == 'unchanged' %}
+    <div class="unchanged-item">{{ render_block(diff.after) }}</div>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+{% elif version.diff_status == 'failed' %}
+<div class="card border-danger shadow-sm">
+  <div class="card-body p-4">
+    <h2 class="h5 text-danger">문서 비교 처리 실패</h2>
+    <p class="text-secondary">파일과 버전은 정상 저장되었습니다. 원인을 확인한 뒤 재실행할 수 있습니다.</p>
+    <pre class="error-detail">{{ version.diff_error }}</pre>
+    {% if can_edit_chunk(current_user, chunk) %}
+    <form method="post" action="{{ url_for('chunks.retry_diff', version_id=version.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-danger" type="submit">신구대조 재실행</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="card"><div class="card-body p-4">{{ version.diff_summary or '비교할 이전 버전이 없습니다.' }}</div></div>
+{% endif %}
+{% endblock %}

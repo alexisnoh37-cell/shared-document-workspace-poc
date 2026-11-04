@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}오류 {{ code }}{% endblock %}
+{% block content %}
+<div class="empty-state card shadow-sm">
+  <div class="card-body text-center p-5">
+    <span class="error-code">{{ code }}</span>
+    <h1 class="h3 mt-3">요청을 처리할 수 없습니다.</h1>
+    <p class="text-secondary">{{ message }}</p>
+    <a class="btn btn-primary mt-2" href="{{ url_for('documents.index') if current_user else url_for('auth.login') }}">돌아가기</a>
+  </div>
+</div>
+{% endblock %}
+

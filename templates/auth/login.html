@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}로그인 · 공통 자료관리 워크스페이스{% endblock %}
+{% block content %}
+<div class="login-shell">
+  <section class="login-intro">
+    <span class="eyebrow">CLEAN ENERGY WORKSPACE</span>
+    <h1>한 자료를 함께 보고,<br>소관 내용만 안전하게 최신화합니다.</h1>
+    <p>개인별 수정이력, 문서 조각 잠금, 팀 검토와 최종확정을 하나의 흐름으로 확인하는 시연용 워크스페이스입니다.</p>
+    <div class="login-points">
+      <span>전체 공동 열람</span>
+      <span>팀별 편집권한</span>
+      <span>버전·신구대조</span>
+      <span>승인·최종확정</span>
+    </div>
+  </section>
+  <section class="card login-card shadow-sm">
+    <div class="card-body p-4 p-lg-5">
+      <h2 class="h4 mb-1">개인 로그인</h2>
+      <p class="text-secondary mb-4">Supabase Auth 이메일 계정 또는 관리 아이디로 로그인합니다.</p>
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+          <label class="form-label" for="email">이메일 또는 아이디</label>
+          <input class="form-control form-control-lg" id="email" name="email" type="text"
+                 autocomplete="username" placeholder="renewable2@example.com 또는 master1" required autofocus>
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="password">비밀번호</label>
+          <input class="form-control form-control-lg" id="password" name="password" type="password"
+                 autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-primary btn-lg w-100" type="submit">로그인</button>
+      </form>
+      {% if config.APP_BACKEND == 'memory' %}
+      <div class="demo-note mt-4">
+        <strong>데모 계정 예시</strong>
+        <span>정책1: policy1@example.com</span>
+        <span>재생2: renewable2@example.com</span>
+        <small>비밀번호는 서버의 DEMO_ACCOUNT_PASSWORD 환경변수 값입니다.</small>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

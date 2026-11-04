@@ -1,0 +1,15 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.pytest_tmp*/
+.coverage
+htmlcov/
+instance/
+node_modules/
+npm-debug.log*
+sample_files/*.hwp
+sample_files/*.hwpx
+!sample_files/README.md

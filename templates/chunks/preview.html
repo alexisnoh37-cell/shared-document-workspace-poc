@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ chunk.chunk_code }} {{ chunk.title }} · 내용 보기{% endblock %}
+{% block content %}
+<div class="page-heading preview-heading">
+  <div>
+    <a class="back-link" href="{{ url_for('documents.detail', document_id=chunk.document_id) }}">← 자료 현황</a>
+    <h1>{{ chunk.chunk_code }} {{ chunk.title }}</h1>
+    <p>v{{ version.version_no }} · {{ version.original_filename }} · Kordoc 미리보기</p>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-outline-secondary" href="{{ url_for('chunks.history', chunk_id=chunk.id) }}">버전 이력</a>
+    <a class="btn btn-primary" href="{{ url_for('chunks.download', version_id=version.id) }}">원본 다운로드</a>
+  </div>
+</div>
+
+{% if preview_supported %}
+<div class="preview-toolbar mb-3">
+  <span>브라우저 미리보기는 원문 확인용이며 최종 서식은 한글 프로그램에서 확인하세요.</span>
+  <a href="{{ url_for('chunks.preview_svg', version_id=version.id) }}" target="_blank" rel="noopener">새 창에서 크게 보기</a>
+</div>
+<div class="document-preview-shell">
+  <img class="document-preview" src="{{ url_for('chunks.preview_svg', version_id=version.id) }}"
+       alt="{{ version.original_filename }} 문서 미리보기">
+</div>
+{% else %}
+<div class="card card-body empty-state text-center shadow-sm">
+  <h2 class="h4">이 형식은 브라우저 미리보기를 지원하지 않습니다.</h2>
+  <p class="text-secondary">현재 Kordoc 레이아웃 미리보기는 HWPX 파일에 제공됩니다.</p>
+  <div><a class="btn btn-primary" href="{{ url_for('chunks.download', version_id=version.id) }}">원본 다운로드</a></div>
+</div>
+{% endif %}
+{% endblock %}

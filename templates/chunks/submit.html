@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}수정본 제출 · {{ chunk.chunk_code }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <a class="back-link" href="{{ url_for('documents.detail', document_id=chunk.document_id) }}">← 문서 상세</a>
+    <h1>{{ chunk.chunk_code }} {{ chunk.title }}</h1>
+    <p>{{ chunk.team_name }} · 현재 v{{ chunk.current_version }}</p>
+  </div>
+  <span class="status-pill status-editing">편집 잠금 보유</span>
+</div>
+
+<section class="card card-body p-4 mb-4 shadow-sm">
+  <span class="eyebrow">EDIT METHOD</span>
+  <h2 class="h4 mt-1">편집 방법을 선택하세요</h2>
+  <div class="edit-method-grid mt-2">
+    <div class="edit-method-card {% if not web_editor_supported %}edit-method-disabled{% endif %}">
+      <h3 class="h5">브라우저에서 수정</h3>
+      <p>HWPX 파일을 웹 편집기에서 바로 수정하고 새 버전으로 제출합니다.</p>
+      {% if web_editor_supported %}
+      <a class="btn btn-primary" href="{{ url_for('chunks.editor', chunk_id=chunk.id) }}">웹에서 수정</a>
+      {% elif versions and versions[0].original_filename.lower().endswith('.hwp') %}
+      <span class="text-secondary small">HWP 파일은 아직 웹 편집을 지원하지 않습니다.</span>
+      {% else %}
+      <span class="text-secondary small">편집할 HWPX 기준 버전이 없습니다.</span>
+      {% endif %}
+    </div>
+    <div class="edit-method-card">
+      <h3 class="h5">한글에서 수정</h3>
+      <p>파일을 내려받아 PC 한글 프로그램에서 수정한 후 아래 폼으로 업로드합니다.</p>
+      {% if versions %}
+      <a class="btn btn-outline-primary" href="{{ url_for('chunks.download', version_id=versions[0].id) }}">최신 파일 다운로드</a>
+      {% else %}
+      <span class="text-secondary small">신규 HWP/HWPX 파일을 아래에서 제출하세요.</span>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <section class="card h-100 shadow-sm">
+      <div class="card-body p-4">
+        <span class="eyebrow">STEP 1</span>
+        <h2 class="h4">최신 버전 내려받기</h2>
+        <p class="text-secondary">반드시 아래 최신 파일을 기준으로 수정하세요. 제출 시 체크아웃 당시 버전과 다시 대조합니다.</p>
+        {% if versions %}
+        <a class="btn btn-outline-primary" href="{{ url_for('chunks.download', version_id=versions[0].id) }}">v{{ versions[0].version_no }} 다운로드</a>
+        {% else %}
+        <div class="alert alert-info mb-0">초기 파일이 없습니다. 새 HWP/HWPX 파일을 제출하세요.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+  <div class="col-lg-7">
+    <section class="card shadow-sm">
+      <div class="card-body p-4">
+        <span class="eyebrow">STEP 2</span>
+        <h2 class="h4">수정본 제출</h2>
+        <form method="post" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label" for="file">HWP/HWPX 파일</label>
+            <input class="form-control" id="file" name="file" type="file" accept=".hwp,.hwpx" required>
+            <div class="form-text">기존 파일을 덮어쓰지 않고 새 버전을 생성합니다.</div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label" for="change_reason">변경 사유</label>
+            <textarea class="form-control" id="change_reason" name="change_reason" rows="4" maxlength="1000" required
+                      placeholder="예: 2027년 보급 목표 및 추진일정 최신화"></textarea>
+          </div>
+          <button class="btn btn-primary" type="submit">수정본 제출</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% if config.COLLAB_EDITOR_ENABLED %}
+<div data-heartbeat-url="{{ url_for('collab.heartbeat', chunk_id=chunk.id) }}"
+     data-heartbeat-seconds="60" hidden></div>
+<script src="{{ url_for('static', filename='js/collab_heartbeat.js') }}"></script>
+{% endif %}
+{% endblock %}
