@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "@rhwp/editor": "0.8.4",
-    "kordoc": "4.24.43"
+    "kordoc": "4.24.46"
   }
 }
