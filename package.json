@@ -8,7 +8,7 @@
     "generate:samples": "node scripts/generate_sample_files.mjs"
   },
   "dependencies": {
-    "@rhwp/editor": "0.8.4",
+    "@rhwp/editor": "0.8.7",
     "kordoc": "4.24.43"
   }
 }
